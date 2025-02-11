@@ -1,0 +1,244 @@
+---
+title: "RMD_for_Coursera_Basketball_Case_study"
+output: html_document
+author: Matthias Wong
+date: "2024-12-13"
+---
+
+# Basketball Case Study (Data Analytics and Insights)
+
+## Breakdown of Steps of Data Analysis
+
+Step 1: Read the Basketball Data set into my Global Environment
+
+```{r}
+library(readr)
+library(purrr)
+library(dplyr)
+library(writexl)
+
+# Set working directory as per individual user
+setwd("~/Downloads/archive")
+
+# List all CSV files in the folder
+csv_files <- list.files(path = "~/Downloads/archive", pattern = "\\.csv$", full.names = TRUE)
+
+
+data_list <- map(csv_files, function(file) {
+  df <- read_csv(file)
+  
+
+  if ("SEED" %in% colnames(df)) {
+    df$SEED <- as.character(df$SEED)  
+  } else {
+    df$SEED <- NA_character_ 
+  }
+  
+  return(df)
+})
+
+# Combine the data frames into one
+combined_data <- bind_rows(data_list)
+View(combined_data)
+```
+
+Step 2: Find out the Teams that are considered under-performing (i.e have not made the tourney in the past year)
+
+```{r}
+library(dplyr)
+underperforming_teams <- combined_data |> 
+  filter(YEAR == 2023) |> 
+  filter(POSTSEASON == "N/A")
+
+```
+
+Step 3: Find out the Teams that are considered well-performing (i.e have the tourney in the past year)
+
+```{r}
+library(dplyr)
+wellperforming_teams <- combined_data |> 
+  filter(YEAR == 2023) |> 
+  filter(POSTSEASON != "N/A")
+```
+
+Step 4: Calculate the win-ratio for both the under-performing teams and well-achieving teams
+
+```{r}
+underperforming_teams <- underperforming_teams |> mutate(win_ratio = W / G)
+wellperforming_teams <- wellperforming_teams |> mutate(win_ratio = W / G)
+
+combined_data <- combined_data |> 
+  filter(YEAR == 2023) |> 
+  mutate(win_ratio = W / G)
+  
+```
+
+Step 5: Compare between the well-performing teams and the under-achieving teams
+
+Dependent Variable: Win-Ratio
+
+5.1) Independent Variable: ADJOE (Adjusted Offensive Efficiency (An estimate of the offensive efficiency (points scored per 100 possessions))
+
+```{r}
+library(ggplot2)
+
+ggplot(underperforming_teams, aes(x = ADJOE, y = win_ratio)) + 
+  geom_point(color = "deepskyblue2") + geom_smooth(method = "lm", color = "deepskyblue2") +
+  geom_point(data = wellperforming_teams, color = "darkolivegreen2") + geom_smooth(data = wellperforming_teams, method = "lm", color = "darkolivegreen2")
+
+cor(combined_data$ADJOE, combined_data$win_ratio)
+```
+
+From the graph, it seems as if well-performing teams tend to have a higher ADJOE than under-performing teams. There's also a strong correlation between ADJOE and the overall win-ratio (correlation coefficient value is 0.658.
+
+5.2) Independent Variable: ADJDE (Adjusted Defensive Efficiency (An estimate of the defensive efficiency (points allowed per 100 possessions))
+
+```{r}
+library(ggplot2)
+
+ggplot(underperforming_teams, aes(x = ADJDE, y = win_ratio)) + 
+  geom_point(color = "deepskyblue2") + geom_smooth(method = "lm", color = "deepskyblue2") +
+  geom_point(data = wellperforming_teams, color = "darkolivegreen2") + geom_smooth(data = wellperforming_teams, method = "lm", color = "darkolivegreen2")
+
+cor(combined_data$ADJDE, combined_data$win_ratio)
+```
+
+From the graph, it seems as if well-performing teams tend to have a lower ADJDE than under-performing teams. There's also a strong negative correlation between ADJDE and the overall win-ratio (correlation coefficient value is -0.624.
+
+**Looking at this two graphs, it is aligned with what is expected of a well-performing team and a under-achieving team, i.e that a well-performing team will score more points and allow their opponents lesser points as compared to a under-performing team who will score less and allow more points.**
+
+Now to delve into more specific reasons (e.g turnovers/game) which would have a stronger correlation with the win-ratio to understand which are the most pressing problems that need to be solved.
+
+5.3) Independent Variable: EFG_O (Effective Field Goal Percentage Shot)
+
+```{r}
+library(ggplot2)
+
+ggplot(underperforming_teams, aes(x = EFG_O, y = win_ratio)) + 
+  geom_point(color = "deepskyblue2") + geom_smooth(method = "lm", color = "deepskyblue2") +
+  geom_point(data = wellperforming_teams, color = "darkolivegreen2") + geom_smooth(data = wellperforming_teams, method = "lm", color = "darkolivegreen2")
+
+cor(combined_data$EFG_O, combined_data$win_ratio)
+```
+
+Well-Performing Teams have better shooting percentages as compared to under-performing teams.
+
+5.4) Independent Variable: Turnover Percentage Allowed (Turnover Rate)
+
+```{r}
+library(ggplot2)
+
+ggplot(underperforming_teams, aes(x = TOR, y = win_ratio)) + 
+  geom_point(color = "deepskyblue2") + geom_smooth(method = "lm", color = "deepskyblue2") +
+  geom_point(data = wellperforming_teams, color = "darkolivegreen2") + geom_smooth(data = wellperforming_teams, method = "lm", color = "darkolivegreen2")
+
+cor(combined_data$TOR, combined_data$win_ratio)
+```
+
+Well-Performing Teams tend to have a smaller turnover rate than Under-performing teams.
+
+5.5) Independent Variable: TORD (Steal Rate)
+
+```{r}
+library(ggplot2)
+
+ggplot(underperforming_teams, aes(x = TORD, y = win_ratio)) + 
+  geom_point(color = "deepskyblue2") + geom_smooth(method = "lm", color = "deepskyblue2") +
+  geom_point(data = wellperforming_teams, color = "darkolivegreen2") + geom_smooth(data = wellperforming_teams, method = "lm", color = "darkolivegreen2")
+
+cor(combined_data$TORD, combined_data$win_ratio)
+```
+
+There does not seem to be much of a discrepancy between well-performing and under-achieving teams towards their steal rate and eventual win-ratio. This is bolstered by the fact that the correlation coefficient between the steal rate and win-ratio is a weak positive, indicating that steals do not contribute as much to winning games.
+
+5.6) Independent Variable: ORB (Offensive Rebound Rate)
+
+```{r}
+library(ggplot2)
+
+ggplot(underperforming_teams, aes(x = ORB, y = win_ratio)) + 
+  geom_point(color = "deepskyblue2") + geom_smooth(method = "lm", color = "deepskyblue2") +
+  geom_point(data = wellperforming_teams, color = "darkolivegreen2") + geom_smooth(data = wellperforming_teams, method = "lm", color = "darkolivegreen2")
+
+cor(combined_data$ORB, combined_data$win_ratio)
+```
+
+Again, it does not seem as if offensive rebounds differ much between the well-performers and the under-performers.
+
+5.7) FTR (Free Throw Rate: How often the teams are given free throws)
+
+```{r}
+library(ggplot2)
+
+ggplot(underperforming_teams, aes(x = FTR, y = win_ratio)) + 
+  geom_point(color = "deepskyblue2") + geom_smooth(method = "lm", color = "deepskyblue2") +
+  geom_point(data = wellperforming_teams, color = "darkolivegreen2") + geom_smooth(data = wellperforming_teams, method = "lm", color = "darkolivegreen2")
+
+cor(combined_data$FTR, combined_data$win_ratio)
+```
+
+There does not seem to be a big difference between the number of free throws given to the two sides in this case as well. This could suggest that the officiating in college games are somewhat fair, and that there isn't any bias to teams.
+
+5.8) Independent Variable: 2P_0 (Two Point Shooting Percentage)
+
+```{r}
+library(ggplot2)
+
+underperforming_teams <- underperforming_teams |> rename(twopointpercentage = "2P_O")
+wellperforming_teams <- wellperforming_teams |> rename(twopointpercentage = "2P_O")
+combined_data <- combined_data |> rename(twopointpercentage = "2P_O")
+
+ggplot(underperforming_teams, aes(x = twopointpercentage, y = win_ratio)) + 
+  geom_point(color = "deepskyblue2") + geom_smooth(method = "lm", color = "deepskyblue2") +
+  geom_point(data = wellperforming_teams, color = "darkolivegreen2") + geom_smooth(data = wellperforming_teams, method = "lm", color = "darkolivegreen2")
+
+cor(combined_data$twopointpercentage, combined_data$win_ratio)
+```
+
+Well-Performing Teams tend to have a higher two point percentage as compared to the underachievers. This is further supported by the strong correlation coefficient and the strong correlation coefficient of the ADJOE and win_ratio mentioned earlier.
+
+5.9) Independent Variable: 3P_0 (Three Point Shooting Percentage)
+
+```{r}
+library(ggplot2)
+
+underperforming_teams <- underperforming_teams |> rename(threepointpercentage = "3P_O")
+wellperforming_teams <- wellperforming_teams |> rename(threepointpercentage = "3P_O")
+combined_data <- combined_data |> rename(threepointpercentage = "3P_O")
+
+ggplot(underperforming_teams, aes(x = threepointpercentage, y = win_ratio)) + 
+  geom_point(color = "deepskyblue2") + geom_smooth(method = "lm", color = "deepskyblue2") +
+  geom_point(data = wellperforming_teams, color = "darkolivegreen2") + geom_smooth(data = wellperforming_teams, method = "lm", color = "darkolivegreen2")
+
+cor(combined_data$threepointpercentage, combined_data$win_ratio)
+```
+
+Well-Performing Teams tend to have a higher three point percentage as compared to the underachievers. However, this correlation towards winning is not as strong as the two-point percentage is towards winning.
+
+## Insights Drawn from Data
+
+1)  The lack of playoff success is more of an offensive problem than a defensive one.
+
+-   The correlation between the ADJOE and the win-ratio is much stronger than the correlation between the ADJDE and the win-ratio. Though correlation is not a fair measure of causality, it suggests that the lack of playoff success is an offensive issue than a defensive one.
+
+2.  To be specific, the two-point shot percentage is the most important variable for playoff success.
+
+-   Though well-performing teams seem to outdo their counterparts in both the three-point shot and the two-point shot, there seems to be a greater correlation between the two-point shot and winning as compared to the three-point shots.
+
+3.  Though they do affect winning, other variables such as steals and offensive rebounds seem to play a smaller role in achieving playoff success.
+
+-   The correlation between these variables and the win-ratio seem to be much smaller. This could be due to the nature of these variables, i.e steals and offensive rebounds happen much less than a two-point or three-point shot, such is the case that it then does not have the ability to affect a game as much.
+
+## Solutions and Next Steps 
+
+Firstly, we must recognize that the data set is limited, in that it does not tell us the reasons for the difference in the teams shooting ability. Also, the data set is limited in that there could be other factors that affect the win-ratio more which are not recorded in the data (e.g Free Throw Percentage). However, given the availability of the data, there are some possible next steps to be taken.
+
+1.  Shooting Programs
+
+-   The difference in shooting could simply be due to a lack of training on shooting. Teams can place their players on shooting programs and see whether their win-ratio will improve.
+
+2.  Fitness and Conditioning Programs
+
+-   There is also a major correlation between fitness and being able to make a shot. The difference in shooting can be a conditioning problem, and teams can place their players on conditioning programs to hopefully improve their playoff success.
+
+With this being said, I would like to reiterate the limited nature of the data set, which could insinuate that this lack of playoff success may be due to a multitude of reasons which are not very obviously seen.
